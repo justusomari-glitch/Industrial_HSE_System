@@ -4,8 +4,17 @@ import os
 import dagshub
 from dotenv import load_dotenv
 
+load_dotenv()
+os.environ['MLFLOW_TRACKING_PASSWORD']=os.getenv('DAGSHUB_TOKEN')
+os.environ['MLFLOW_TRACKING_USERNAME']="justusomari-glitch"
+dagshub.init(
+    repo_owner="justusomari-glitch",
+    repo_name="Health and Safety Management System",
+    mlflow=True
+)
 
-TRACKING_URI="sqlite:///mlflow.db"
+
+TRACKING_URI="https://dagshub.com/justusomari-glitch/Industrial_HSE_System.mlflow"
 EXPERIMENT_NAME= "Health and Safety Management System"
 
 def setup_mlflow():
@@ -28,6 +37,11 @@ def log_prediction(
     break_compliance,
     shift,
     zone,
+    anomaly_binary,
+    incident_proba,
+    severity,
+    incident_type,
+    scores,
     rule_engine,
     score_engine
 ):
@@ -49,6 +63,13 @@ def log_prediction(
         mlflow.log_metric("smoke_level",smoke_level)
         mlflow.log_param("shift",shift)
         mlflow.log_param("zone",zone)
+        mlflow.log_param("severity",severity)
+        mlflow.log_param("incident_type",incident_type)
+        mlflow.log_param("anomaly_binary",anomaly_binary)
+        mlflow.log_metric("incident_proba",incident_proba)
+        mlflow.log_metric("scores",scores)
+        mlflow.set_param("rule_engine",rule_engine)
+        mlflow.set_param('score_engine',score_engine)
         mlflow.set_tag("rule_engine",rule_engine)
         mlflow.set_tag('score_engine',score_engine)
 

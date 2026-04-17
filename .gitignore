@@ -4,3 +4,4 @@ __ipynb_checkpoints
 __pycache__
 *.pyc
 mlruns
+.env
