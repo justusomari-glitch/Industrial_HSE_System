@@ -4,7 +4,6 @@ import joblib
 
 ## loading the models
 def load_models():
-    
     anomaly_model=joblib.load("models/anomaly_detection.pkl")
     incident_model=joblib.load("models/incident_model.pkl")
     incident_severity=joblib.load("models/incident_severity_model.pkl")
