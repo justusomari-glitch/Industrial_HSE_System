@@ -44,6 +44,7 @@ def home():
 
 @app.post("/predict")
 def predict(data:HealthAndSafety):
+    load_models()
     input_dict=data.model_dump()
     df=pd.DataFrame([input_dict])
     anomaly_flag=anomaly_model.predict(df)
@@ -100,7 +101,31 @@ def predict(data:HealthAndSafety):
             lambda x: "ANOMALY DETECTED" if x==1 else "OKAY")
     machines['rule_engine']=machines.apply(rule_engine,axis=1)
     machines['score_engine']=machines.apply(score_engine,axis=1)
-
+    log_prediction(
+        temperature=input_dict['temperature'],
+        humidity=input_dict['humidity'],  
+        noise_level=input_dict['noise_level'],
+        gas_level=input_dict['gas_level'],
+        vibration=input_dict['vibration'],
+        voltage=input_dict['voltage'],
+        pressure=input_dict['pressure'],
+        co_ppm=input_dict['co_ppm'],
+        smoke_level=input_dict['smoke_level'],
+        hours_worked=input_dict['hours_worked'],
+        days_consecutive=input_dict['days_consecutive'],
+        ppe_compliance=input_dict['ppe_compliance'],
+        break_compliance=input_dict['break_compliance'],
+        shift=input_dict['shift'],
+        zone=input_dict['zone'],
+        anomaly_binary=anomaly_binary[0],
+        incident_proba=incident_proba[0],
+        severity=severity[0],
+        incident_type=incident_type[0],
+        scores=scores,
+        rule_engine=machines['rule_engine'].iloc[0],
+        score_engine=machines['score_engine'].iloc[0],
+        
+    )
     return machines.to_dict(orient='records')
     
 

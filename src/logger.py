@@ -4,22 +4,34 @@ import os
 import dagshub
 from dotenv import load_dotenv
 
-load_dotenv()
-os.environ['MLFLOW_TRACKING_PASSWORD']=os.getenv('DAGSHUB_TOKEN')
-os.environ['MLFLOW_TRACKING_USERNAME']="justusomari-glitch"
-dagshub.init(
-    repo_owner="justusomari-glitch",
-    repo_name="Health and Safety Management System",
-    mlflow=True
-)
-
 
 TRACKING_URI="https://dagshub.com/justusomari-glitch/Industrial_HSE_System.mlflow"
 EXPERIMENT_NAME= "Health and Safety Management System"
 
+
 def setup_mlflow():
+    import os
+    import dagshub
+    import mlflow
+    from dotenv import load_dotenv
+    load_dotenv()
+    dagshub_token = os.getenv('DAGSHUB_TOKEN')
+    try:
+        if dagshub_token:
+            os.environ['MLFLOW_TRACKING_USERNAME']="justusomari-glitch"
+            os.environ["MLFLOW_TRACKING_PASSWORD"] = dagshub_token
+            dagshub.init(
+                repo_owner="justusomari-glitch",
+                repo_name="Industrial_HSE_System",
+                mlflow=True
+            )
+            
+    except Exception as e:
+        print(f"Mlflow setup warning: {e}")
     mlflow.set_tracking_uri(TRACKING_URI)
     mlflow.set_experiment(EXPERIMENT_NAME)
+    
+
 
 def log_prediction(
     temperature,
@@ -68,8 +80,8 @@ def log_prediction(
         mlflow.log_param("anomaly_binary",anomaly_binary)
         mlflow.log_metric("incident_proba",incident_proba)
         mlflow.log_metric("scores",scores)
-        mlflow.set_param("rule_engine",rule_engine)
-        mlflow.set_param('score_engine',score_engine)
+        mlflow.log_param("rule_engine",rule_engine)
+        mlflow.log_param('score_engine',score_engine)
         mlflow.set_tag("rule_engine",rule_engine)
         mlflow.set_tag('score_engine',score_engine)
 
