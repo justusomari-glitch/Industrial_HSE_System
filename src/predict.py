@@ -3,18 +3,25 @@ from fastapi import FastAPI
 import joblib
 import pandas as pd
 import numpy as np
+from src.logger import log_prediction,setup_mlflow
+import dagshub
 
 app=FastAPI()
+@app.on_event('startup')
+def startup_event():
+    setup_mlflow()
 
 ## load models
+models_loaded = False
 def load_models():
-    
+    global anomaly_model,incident_model,incident_severity,incident_type_model,models_loaded
+    if models_loaded:
+        return
     anomaly_model=joblib.load("models/anomaly_detection.pkl")
     incident_model=joblib.load("models/incident_model.pkl")
     incident_severity=joblib.load("models/incident_severity_model.pkl")
     incident_type_model=joblib.load("models/incident_type_model.pkl")
-    return anomaly_model,incident_model,incident_severity,incident_type_model
-anomaly_model,incident_model,incident_severity,incident_type_model=load_models()
+    models_loaded = True
 
 type_weights={
     "Chemical":0.8,
