@@ -23,7 +23,7 @@ jobs :
                 python -m pip install pytest
             - name: Build Docker image
               run: |
-                docker build-t product -api
+                docker build-t product-api .
             - name: Test app import 
               run: python -c "from src.predict import app;print(succesfull)"
 
