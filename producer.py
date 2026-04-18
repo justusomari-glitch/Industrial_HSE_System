@@ -38,7 +38,7 @@ def generate_random_data():
         'co_ppm':round(random.uniform(0.0,300.0),2),
         'smoke_level':round(random.uniform(10.0,500.0),2),
         'hours_worked':round(random.uniform(2.0,15.0),2),
-        'days_consecutive':random.uniform(1,20),
+        'days_consecutive':random.randint(1,20),
         'ppe_compliance':round(random.uniform(0.0,1.0),2),
         'break_compliance':random.choice([0,1]),
         'shift':random.choice(['Morning','Afternoon','Night']),

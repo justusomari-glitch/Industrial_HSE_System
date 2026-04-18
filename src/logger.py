@@ -30,8 +30,8 @@ def setup_mlflow():
         print(f"Mlflow setup warning: {e}")
     mlflow.set_tracking_uri(TRACKING_URI)
     mlflow.set_experiment(EXPERIMENT_NAME)
-    
-
+## we are atarting the mlflow
+setup_mlflow()
 
 def log_prediction(
     temperature,
