@@ -37,7 +37,7 @@ class IncidentModel(BaseModel):
     co_ppm: float
     smoke_level: float
     hours_worked: float
-    days_consecutive: float
+    days_consecutive: int
     ppe_compliance: float
     break_compliance: float
     shift: str
@@ -53,7 +53,7 @@ class IncidentSeverityModel(BaseModel):
     co_ppm: float
     smoke_level: float
     hours_worked: float
-    days_consecutive: float
+    days_consecutive: int
     ppe_compliance: float
     break_compliance: float
     shift: str
@@ -69,7 +69,7 @@ class IncidentSeverityModel(BaseModel):
     co_ppm: float
     smoke_level: float
     hours_worked: float
-    days_consecutive: float
+    days_consecutive: int
     ppe_compliance: float
     break_compliance: float
     shift: str
@@ -86,7 +86,7 @@ class HealthAndSafety(BaseModel):
     co_ppm: float
     smoke_level: float
     hours_worked: float
-    days_consecutive: float
+    days_consecutive: int
     ppe_compliance: float
     break_compliance: float
     shift: str
