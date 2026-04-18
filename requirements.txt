@@ -85,7 +85,6 @@ pytest==9.0.3
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.2
 pytz==2023.4
-pywin32==311
 PyYAML==6.0.3
 querystring-parser==1.2.4
 requests==2.33.1
