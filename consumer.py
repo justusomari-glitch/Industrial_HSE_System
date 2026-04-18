@@ -103,7 +103,7 @@ try:
             "severity": result.get("severity"),
             "incident_type": result.get("incident_type"),
             "scores": result.get("scores"),
-            "rule_engine": result.get("rule-engine"),
+            "rule_engine": result.get("rule_engine"),
             "score_engine": result.get("score_engine"),
 
         }
