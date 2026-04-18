@@ -26,4 +26,9 @@ jobs :
                 docker build -t product-api .
             - name: Test app import 
               run: python -c "from src.predict import app;print('succesfull')"
+            - name: Trigger Render Deployment
+              if: success() && github.ref =='refs/heads/main'
+              run: |
+                echo "Triggering Render Deployment"
+                curl -X Post "${{secrets.RENDER_DEPLOY_HOOK}}"
 
