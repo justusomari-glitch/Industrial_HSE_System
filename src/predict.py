@@ -82,13 +82,13 @@ def predict(data:HealthAndSafety):
     def score_engine(row):
         scores=row['scores']
         if scores >=0.7:
-            return "CRITICAL RISK LEVEL: System conditions indicate a likelihood of a severe incident."
+            return "CRITICAL RISK LEVEL!!System conditions indicate a likelihood of a severe incident."
         elif scores >=0.5:
-            return "HIGH RISK LEVEL: Elevated Risk Detected. Conditions may lead to an incident if not addresed promptly"
+            return "HIGH RISK LEVEL!!Elevated Risk Detected. Conditions may lead to an incident if not addresed promptly"
         elif scores >=0.3:
-            return "MODERATE RISK LEVEL: Some risk factors present. Monitoring and preventive action recommended"
+            return "MODERATE RISK LEVEL!!Some risk factors present. Monitoring and preventive action recommended"
         else:
-            return "LOW RISK LEVEL :System and Employees operating within normal conditions. No immediate action Needed"
+            return "LOW RISK LEVEL!!System and Employees operating within normal conditions. No immediate action Needed"
         
     machines=pd.DataFrame({
         "anomaly_binary":anomaly_binary,

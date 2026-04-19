@@ -16,6 +16,7 @@ st.set_page_config(
       )
 
 st.title("HEALTH AND SAFETY")
+st.caption("Built by Justus Omari Kwache| Powered by FastAPI | Deployed on Render & Streamlit")
 st.caption("Health and Safety System")
 
 mode= st.sidebar.selectbox(
@@ -82,6 +83,7 @@ if mode=="Manual input":
                 st.divider()
 
                 st.write("**Anomaly Status:**",result.get("anomaly_binary"))
+
                 st.write("**Severity:**",result.get("severity"))
                 st.write("**Type of Incident:**",result.get("incident_type"))
 
@@ -149,22 +151,23 @@ elif mode=="Real-time Monitoring":
                     st.dataframe(df)
                     st.subheader("Latest Prediction")
                     st.dataframe(df.tail(1))
-
-                    col1,col2,col3=st.columns(3)
-                    col1.metric("Latest Anomaly:","Anomaly Detected" if latest.get("anomaly_binary")==1 else "No Anomaly")
-                    col2.metric("Latest Incident Type:",latest.get("incident_type"))
-                    col3.metric("Latest Severity Type:",latest.get("severity"))
+                    st.divider()
+                    st.metric("Latest Anomaly:","Anomaly Detected" if latest.get("anomaly_binary")==1 else "No Anomaly")
+                    st.divider()
+                    col1,col2=st.columns(2)  
+                    col1.metric("Latest Incident Type:",latest.get("incident_type"))
+                    col2.metric("Latest Severity Type:",latest.get("severity"))
                     st.divider()
                     col1,col3 = st.columns(2)
                     col1.metric("Latest Incident Probability", f"{float(latest.get('incident_proba', 0.0)):.2f}")
                     col3.metric("Latest System Risk Score", f"{float(latest.get('scores', 0.0)):.2f}")
                     st.divider()
                     st.subheader("Latest Decision Engine Output")
-                    st.markdown(f"##### Latest  Decision: {latest.get('rule_engine')}")
-                    st.markdown(f"##### Latest System Decision: {latest.get('score_engine')}")
+                    st.write(f"**Latest  Decision:** {latest.get('rule_engine')}")
+                    st.write(f"**Latest System Decision:** {latest.get('score_engine')}")
         except Exception as e:
                 st.error(f"Data base error: {e}")
         time.sleep(10)
-st.caption("Built by Justus Omari Kwache| Powered by FastAPI | Deployed on Render & Streamlit")
+
         
     
