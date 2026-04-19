@@ -58,7 +58,7 @@ def predict(data:HealthAndSafety):
     type_score=np.array([type_weights[y] for y in incident_type])
     criteria=np.column_stack([anomaly_binary,incident_proba,severity_score,type_score])
     weights=([0.1,0.5,0.3,0.1])
-    scores=np.dot(criteria,weights)
+    scores=np.dot(criteria,weights)[0]
 
     ## creating our decision engine
     def rule_engine(row):
@@ -126,6 +126,6 @@ def predict(data:HealthAndSafety):
         score_engine=machines['score_engine'].iloc[0],
         
     )
-    return machines.to_dict(orient='records')
+    return machines.to_dict(records='orient')
     
 
