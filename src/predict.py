@@ -126,6 +126,6 @@ def predict(data:HealthAndSafety):
         score_engine=machines['score_engine'].iloc[0],
         
     )
-    return machines.to_dict(records='orient')
+    return machines.to_dict(orient='records')
     
 
