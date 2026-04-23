@@ -60,8 +60,11 @@ CREATE TABLE IF NOT EXISTS healthandsafety(
     severity VARCHAR(100),
     incident_type VARCHAR(100),
     scores FLOAT,
-    rule_engine VARCHAR(250),
-    score_engine VARCHAR(250)
+    status VARCHAR(100),
+    reason VARCHAR(250),
+    action VARCHAR(250),
+    timeframe VARCHAR(100)
+               
 )""")
 db.commit()
 try:
@@ -115,7 +118,7 @@ try:
             temperature,humidity,noise_level ,gas_level,vibration,
             voltage,pressure,co_ppm,smoke_level,hours_worked,days_consecutive,ppe_compliance,
             break_compliance,shift,zone,anomaly_binary,incident_proba,severity,
-            incident_type,scores,reason,action,timeframe
+            incident_type,scores,status,reason,action,timeframe
         )  VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
         """
         values= (
@@ -139,6 +142,7 @@ try:
             record["severity"],
             record["incident_type"],
             record["scores"],
+            record["status"],
             record["reason"],
             record["action"],
             record["timeframe"]
