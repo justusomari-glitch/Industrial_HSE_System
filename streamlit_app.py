@@ -71,15 +71,17 @@ if mode=="Manual input":
             response=requests.post(url,json=data)
             if response.status_code==200:
                 result=response.json()
-                if isinstance(result, list):
+                st.write("Result:",result)
+                if isinstance(result,list):
                     result=result[0]
+
                 def to_float(val):
                     try:
                         return float(val)
                     except (ValueError, TypeError):
                         return 0.0
                 incident_prob=to_float(result.get("incident_proba"))
-                score=to_float(result.get("scores"))
+                score=to_float(result.get("scores", 0.0))
                 st.divider()
 
                 st.write("**Anomaly Status:**",result.get("anomaly_binary"))
@@ -108,9 +110,9 @@ if mode=="Manual input":
                 st.divider()
 
                 st.subheader("Decision Engine Output")
-                status=result.get("rule_engine","").title()
-                risk_text=result.get("score_engine","")
-                risk_text=risk_text.capitalize()
+                status=result.get("status","").title()
+                risk_text=(result.get("reason") or "No specific reason provided.").capitalize()
+                
 
                 st.subheader("Safety Assesment")
 

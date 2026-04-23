@@ -54,8 +54,10 @@ def log_prediction(
     severity,
     incident_type,
     scores,
-    rule_engine,
-    score_engine
+    status,
+    reason,
+    action_taken,
+    timeframe
 ):
     timestamp=datetime.now().strftime("%Y/%m/%d_%H%M%S")
     run_name=f"inference_{temperature}-{timestamp}"
@@ -80,10 +82,12 @@ def log_prediction(
         mlflow.log_param("anomaly_binary",anomaly_binary)
         mlflow.log_metric("incident_proba",incident_proba)
         mlflow.log_metric("scores",scores)
-        mlflow.log_param("rule_engine",rule_engine)
-        mlflow.log_param('score_engine',score_engine)
-        mlflow.set_tag("rule_engine",rule_engine)
-        mlflow.set_tag('score_engine',score_engine)
+        mlflow.log_param("status",status)
+        mlflow.log_param("reason",reason)
+        mlflow.log_param("action_taken",action_taken)
+        mlflow.log_param("timeframe",timeframe)
+        mlflow.set_tag("status",status)
+        mlflow.set_tag('reason',reason)
 
    
 

@@ -103,8 +103,10 @@ try:
             "severity": result.get("severity"),
             "incident_type": result.get("incident_type"),
             "scores": result.get("scores"),
-            "rule_engine": result.get("rule_engine"),
-            "score_engine": result.get("score_engine"),
+            "status":result.get("status"),
+            "reason":result.get("reason"),
+            "action":result.get("action"),
+            "timeframe":result.get("timeframe")
 
         }
         anomaly_value= 1 if record['anomaly_binary']== 'ANOMALY DETECTED' else 0
@@ -113,8 +115,8 @@ try:
             temperature,humidity,noise_level ,gas_level,vibration,
             voltage,pressure,co_ppm,smoke_level,hours_worked,days_consecutive,ppe_compliance,
             break_compliance,shift,zone,anomaly_binary,incident_proba,severity,
-            incident_type,scores,rule_engine,score_engine
-        )  VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            incident_type,scores,reason,action,timeframe
+        )  VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
         """
         values= (
             record["temperature"], 
@@ -137,8 +139,9 @@ try:
             record["severity"],
             record["incident_type"],
             record["scores"],
-            record["rule_engine"],
-            record["score_engine"]
+            record["reason"],
+            record["action"],
+            record["timeframe"]
         )
         print("Placeholders:",sql.count("%s"))
         print("Values:",len(values))
