@@ -5,6 +5,7 @@ import numpy as np
 import time
 import os
 from dotenv import load_dotenv
+import json
 
 
 load_dotenv()
@@ -133,6 +134,16 @@ if mode=="Manual input":
                 st.warning(result.get("action").capitalize())
                 st.subheader("Timeframe for Action")
                 st.info(result.get("timeframe").capitalize())
+                st.subheader("Latest Decision Engine Output")
+                shap_data=result.get("shap_explanation",{})
+                st.write("SHAP DEBUG:",shap_data)
+                if shap_data:
+                    st.subheader("SHAP Feature Importance")
+                    shap_df=pd.DataFrame(
+                        list(shap_data.items()),
+                        columns=["Feature", "Impact"]
+                    ).sort_values("Impact",ascending=True)
+                    st.bar_chart(shap_df.set_index("Feature"))
 
 
                 
@@ -143,6 +154,7 @@ if mode=="Manual input":
 elif mode=="Real-time Monitoring":
     import time
     import pymysql
+    import json
 
     st.title("Real-time Monitoring")
     st.info("This mode will automatically fetch the latest predictions from the system every 10 seconds.")
@@ -181,10 +193,20 @@ elif mode=="Real-time Monitoring":
                     col3.metric("Latest System Risk Score", f"{float(latest.get('scores', 0.0)):.2f}")
                     st.divider()
                     st.subheader("Latest Decision Engine Output")
-                    st.write(f"**Latest Status:** {latest.get('status')}")
-                    st.write(f"**Latest  Action Taken:** {latest.get('action')}")
+                    shap_raw=latest.get("shap_explanation","{}")
+                    shap_data=json.loads(shap_raw) if isinstance(shap_raw, str) else {}
+                    if shap_data:
+                        st.subheader("SHAP Feature Importance")
+                        shap_df=pd.DataFrame({
+                            "Feature": list(shap_data.keys()),
+                            "Impact": list(shap_data.values())
+                        }).sort_values("Impact",ascending=True)
+                        st.bar_chart(shap_df.set_index("Feature")["Impact"])
+                    st.subheader("Latest Safety Assessment")
+                    st.write(f"**Current Status:** {latest.get('status')}")
+                    st.write(f"**Recommended action to Take:** {latest.get('action')}")
                     st.write(f"**Latest Reason:** {latest.get('reason')}")
-                    st.write(f"**Latest  Timeframe:** {latest.get('timeframe')}")
+                    st.write(f"**Window For Action:** {latest.get('timeframe')}")
         except Exception as e:
                 st.error(f"Data base error: {e}")
         time.sleep(10)

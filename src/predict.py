@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 from src.logger import log_prediction,setup_mlflow
 import dagshub
+import shap
 
 app=FastAPI()
 @app.on_event('startup')
@@ -59,6 +60,20 @@ def predict(data:HealthAndSafety):
     criteria=np.column_stack([anomaly_binary,incident_proba,severity_score,type_score])
     weights=([0.1,0.5,0.3,0.1])
     scores=np.dot(criteria,weights)[0]
+
+    ## shap explainabilty
+    feature_names=["anomaly_binary","incident_proba","severity_score","type_score"]
+    background=np.zeros((1,4))
+    explainer=shap.KernelExplainer(lambda x: np.dot(x,weights),background)
+    shap_values=explainer.shap_values(criteria)
+    if isinstance(shap_values, list):
+        shap_values=shap_values[0]
+    else:
+        shap_values=shap_values
+    shap_explanation={
+        feature_names[i]: round(float(shap_values[0][i]), 2) 
+        for i in range(len(feature_names))
+    }
 
     ## creating our decision engine
     ## step one is that the score engine returns a number not text
@@ -188,7 +203,8 @@ def predict(data:HealthAndSafety):
         "status":str(machines['status'].iloc[0]),
         "reason":str(machines['reason'].iloc[0]),
         "action":str(machines['action'].iloc[0]),
-        "timeframe":str(machines['timeframe'].iloc[0])
+        "timeframe":str(machines['timeframe'].iloc[0]),
+        "shap_explanation":shap_explanation
     }
     
 
