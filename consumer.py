@@ -63,7 +63,8 @@ CREATE TABLE IF NOT EXISTS healthandsafety(
     status VARCHAR(100),
     reason VARCHAR(250),
     action VARCHAR(250),
-    timeframe VARCHAR(100)
+    timeframe VARCHAR(100),
+    shap_explanation VARCHAR(500)    
                
 )""")
 db.commit()
@@ -109,8 +110,8 @@ try:
             "status":result.get("status"),
             "reason":result.get("reason"),
             "action":result.get("action"),
-            "timeframe":result.get("timeframe")
-
+            "timeframe":result.get("timeframe"),
+            "shap_explanation": json.dumps(result.get("shap_explanation"))
         }
         anomaly_value= 1 if record['anomaly_binary']== 'ANOMALY DETECTED' else 0
         sql= """
@@ -118,8 +119,8 @@ try:
             temperature,humidity,noise_level ,gas_level,vibration,
             voltage,pressure,co_ppm,smoke_level,hours_worked,days_consecutive,ppe_compliance,
             break_compliance,shift,zone,anomaly_binary,incident_proba,severity,
-            incident_type,scores,status,reason,action,timeframe
-        )  VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            incident_type,scores,status,reason,action,timeframe,shap_explanation
+        )  VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
         """
         values= (
             record["temperature"], 
@@ -145,7 +146,8 @@ try:
             record["status"],
             record["reason"],
             record["action"],
-            record["timeframe"]
+            record["timeframe"],
+            record["shap_explanation"]
         )
         print("Placeholders:",sql.count("%s"))
         print("Values:",len(values))
