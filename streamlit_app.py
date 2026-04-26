@@ -14,10 +14,19 @@ st.set_page_config(
       layout="wide",
       initial_sidebar_state="expanded"
       )
+st.markdown("""
+<style>
+.main {background-color: #0E1117; color: white:}
+.st.metric  {background-color:#1c1f26; padding: 15px; border-radius: 12px;}
+.alert {padding:20px; border-radius: 10px; text-align: center; font-weight: bold;}
+.critical {background-color: #ff4b4b;}
+.warning {background-color: #ffa500;}
+.safe {background-color: #28a745;}
+</style>
+""", unsafe_allow_html=True)
 
-st.title("HEALTH AND SAFETY")
-st.caption("Built by Justus Omari Kwache| Powered by FastAPI | Deployed on Render & Streamlit")
-st.caption("Health and Safety System")
+st.title("HEALTH AND SAFETY MANUAL INPUT & REAL-TIME MONITORING SYSTEM")
+st.caption("AI-powered Industrial Risk Detection")
 
 mode= st.sidebar.selectbox(
     "Select Mode",
@@ -74,7 +83,6 @@ if mode=="Manual input":
                 st.write("Result:",result)
                 if isinstance(result,list):
                     result=result[0]
-
                 def to_float(val):
                     try:
                         return float(val)
@@ -82,6 +90,8 @@ if mode=="Manual input":
                         return 0.0
                 incident_prob=to_float(result.get("incident_proba"))
                 score=to_float(result.get("scores", 0.0))
+                status=result.get("status","")
+                severity=result.get("severity","")
                 st.divider()
 
                 st.write("**Anomaly Status:**",result.get("anomaly_binary"))
@@ -118,6 +128,12 @@ if mode=="Manual input":
 
                 st.markdown(f"**Overal Status:** {status}")
                 st.markdown(f"**Risk Insight:** {risk_text}")
+                 
+                st.subheader("Recommended Actions")
+                st.warning(result.get("action").capitalize())
+                st.subheader("Timeframe for Action")
+                st.info(result.get("timeframe").capitalize())
+
 
                 
         except Exception as e:
@@ -165,8 +181,10 @@ elif mode=="Real-time Monitoring":
                     col3.metric("Latest System Risk Score", f"{float(latest.get('scores', 0.0)):.2f}")
                     st.divider()
                     st.subheader("Latest Decision Engine Output")
-                    st.write(f"**Latest  Decision:** {latest.get('rule_engine')}")
-                    st.write(f"**Latest System Decision:** {latest.get('score_engine')}")
+                    st.write(f"**Latest Status:** {latest.get('status')}")
+                    st.write(f"**Latest  Action Taken:** {latest.get('action')}")
+                    st.write(f"**Latest Reason:** {latest.get('reason')}")
+                    st.write(f"**Latest  Timeframe:** {latest.get('timeframe')}")
         except Exception as e:
                 st.error(f"Data base error: {e}")
         time.sleep(10)
