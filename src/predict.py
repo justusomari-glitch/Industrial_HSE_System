@@ -184,7 +184,10 @@ def predict(data:HealthAndSafety):
     machines[['action', 'timeframe']]=machines['status'].apply(lambda x: pd.Series(action_mapping(x)))
 
 ## Insertting of LLM for explainability 
-    groq_client=Groq(api_key=os.getenv("GROQ_API_KEY"))
+    api_key=os.getenv("GROQ_API_KEY")
+    if not api_key:
+        raise ValueError("GROQ_API_KEY environment variable not set.")
+    groq_client=Groq(api_key=api_key)
     llm_prompt=f"""
     You are an expert industrial safety analyst. 
     Based on the following machine data and model outputs,
