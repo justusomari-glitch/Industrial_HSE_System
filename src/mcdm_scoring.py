@@ -65,7 +65,7 @@ def rule_engine(row):
         status = "LOW RISK!!"
         default_reason="Low risk identified based on combined factors."
         overide_status,reason=check_hard_rules(row)
-    if overide_status:
+    if overide_status is not None:
         if RISK_LEVELS[overide_status]>RISK_LEVELS[status]:
             status=overide_status
             final_reason=reason
