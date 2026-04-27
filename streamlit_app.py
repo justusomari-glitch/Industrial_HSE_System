@@ -15,16 +15,7 @@ st.set_page_config(
       layout="wide",
       initial_sidebar_state="expanded"
       )
-st.markdown("""
-<style>
-.main {background-color: #0E1117; color: white:}
-.st.metric  {background-color:#1c1f26; padding: 15px; border-radius: 12px;}
-.alert {padding:20px; border-radius: 10px; text-align: center; font-weight: bold;}
-.critical {background-color: #ff4b4b;}
-.warning {background-color: #ffa500;}
-.safe {background-color: #28a745;}
-</style>
-""", unsafe_allow_html=True)
+
 
 st.title("HEALTH AND SAFETY MANUAL INPUT & REAL-TIME MONITORING SYSTEM")
 st.caption("AI-powered Industrial Risk Detection")
@@ -79,10 +70,7 @@ if mode=="Manual input":
         url=st.secrets["API_URL"]
         try:
             response=requests.post(url,json=data)
-            st.write("API Response Status Code:", response.status_code)
-            st.write("API Response Content:", response.text)
             result=response.json()
-            st.write(result)
             if isinstance(result,list):
                     result=result[0]
             def to_float(val):
@@ -94,54 +82,47 @@ if mode=="Manual input":
             score=to_float(result.get("scores", 0.0))
             status=result.get("status","")
             severity=result.get("severity","")
-            st.divider()
-
-            st.write("**Anomaly Status:**",result.get("anomaly_binary"))
-
-            st.write("**Severity:**",result.get("severity"))
-            st.write("**Type of Incident:**",result.get("incident_type"))
+            type=result.get("incident_type")
+            anomaly=result.get("anomaly_binary")
 
             st.divider()
+            st.markdown(f"##### Anomaly Detection Result: **{anomaly}**")
+            st.markdown(f"##### Severity Level: {severity}")
+            st.markdown(f"##### Incident Type: {type}")
             if result.get("anomaly_binary")=="ANOMALY DETECTED":
                 st.error("Anomaly Detected! Please check machine immediately.")
             else:
                 st.success("No Anomaly Detected. Machine is stable.")
-            history= np.clip(np.random.normal(score, scale=0.1, size=20), 0, 1)
-            df=pd.DataFrame({
-                    "timestamp":pd.date_range(start="2024-01-01", periods=20, freq="H"),
-                    "risk_score":history
-                })
-
+    
             st.divider()
-
             col2,col4=st.columns(2)
-            
             col2.metric("Incident Probability", f"{incident_prob:.2f}")
             col4.metric("System Risk Score", f"{score:.2f}")
 
             st.divider()
-
-            st.subheader("Decision Engine Output")
+            st.subheader("Safety Assesment")
             status=result.get("status","").title()
             risk_text=(result.get("reason") or "No specific reason provided.").capitalize()
-                
+            st.markdown(f"##### Overall Status: {status}")
+            st.markdown(f"##### Risk Insight: {risk_text}")
 
-            st.subheader("Safety Assesment")
-
-            st.markdown(f"**Overal Status:** {status}")
-            st.markdown(f"**Risk Insight:** {risk_text}")
-                 
+            st.divider()
             st.subheader("Recommended Actions")
             st.warning(result.get("action").capitalize())
+
+            st.divider()
+            timeframe=result.get("timeframe")
             st.subheader("Timeframe for Action")
-            st.metric("Timeframe:", result.get("timeframe").capitalize())
+            st.markdown(f"##### Window: {timeframe.capitalize()}")
+
             st.divider()
             llm_exp=result.get("llm_explanation","")
             if llm_exp:
-                st.subheader("LLM Explanation")
+                st.subheader("Risk Summary And Explanation")
                 st.info(llm_exp)
             else:
-                st.warning("No LLM explanation provided.")
+                st.warning("No Risk Summary provided.")
+
             st.divider()
             st.subheader("SHAP EXPLANATION AND VISUALIZATION")
             shap_data=result.get("shap_explanation",{})
@@ -159,7 +140,7 @@ if mode=="Manual input":
                     "Sensor": list(shap_sensor_data.keys()),
                     "Impact": list(abs(v) for v in shap_sensor_data.values())
                 }).sort_values("Impact",ascending=True)
-                st.bar_chart(sensor_df.set_index("Sensor")['Impact'])
+            st.bar_chart(sensor_df.set_index("Sensor")['Impact'])
         except Exception as e:
                 st.error(f"Error during prediction: {e}")
         
@@ -249,7 +230,7 @@ elif mode=="Real-time Monitoring":
                     st.write(f"**Window For Action:** {latest.get('timeframe')}")
                     llm_exp=latest.get("llm_explanation","")
                     if llm_exp:
-                        st.subheader("LLM Explanation")
+                        st.subheader("Risk Summary And Explanation")
                         st.info(llm_exp)
                     st.markdown(f"### Last Updated: {latest.get('llm_timestamp')}")
         except Exception as e:
