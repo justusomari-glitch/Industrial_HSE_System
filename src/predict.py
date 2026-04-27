@@ -1,3 +1,4 @@
+import os
 from src.schema import HealthAndSafety
 from fastapi import FastAPI
 import joblib
@@ -6,6 +7,7 @@ import numpy as np
 from src.logger import log_prediction,setup_mlflow
 import dagshub
 import shap
+from groq import Groq
 
 app=FastAPI()
 @app.on_event('startup')
@@ -61,7 +63,7 @@ def predict(data:HealthAndSafety):
     weights=([0.1,0.5,0.3,0.1])
     scores=np.dot(criteria,weights)[0]
 
-    ## shap explainabilty
+    ## shap explainabilty for the model outputs
     feature_names=["anomaly_binary","incident_proba","severity_score","type_score"]
     background=np.zeros((1,4))
     explainer=shap.KernelExplainer(lambda x: np.dot(x,weights),background)
@@ -74,6 +76,22 @@ def predict(data:HealthAndSafety):
         feature_names[i]: round(float(shap_values[0][i]), 2) 
         for i in range(len(feature_names))
     }
+    ## shap explainability for input features
+    input_feature_names=["temperature","humidity","noise_level","gas_level","vibration",
+                          "voltage","pressure","co_ppm","smoke_level","hours_worked",
+                         "days_consecutive","ppe_compliance","break_compliance"]
+    input_array=df[input_feature_names].values
+    explainer_input=shap.TreeExplainer(anomaly_model.named_steps['iso'])
+    shap_values_input=explainer_input.shap_values(input_array)
+    if isinstance(shap_values_input, list):
+        shap_values_input=shap_values_input[0]
+    else:
+        shap_values_input=shap_values_input
+    shap_sensor_explanation={
+        input_feature_names[i]: round(float(shap_values_input[0][i]), 2) 
+        for i in range(len(input_feature_names))
+    }
+    
 
     ## creating our decision engine
     ## step one is that the score engine returns a number not text
@@ -164,6 +182,49 @@ def predict(data:HealthAndSafety):
     machines['reason']=machines['decision'].apply(lambda x: x['reason'])
     machines['final_score']=machines['decision'].apply(lambda x: x['score'])
     machines[['action', 'timeframe']]=machines['status'].apply(lambda x: pd.Series(action_mapping(x)))
+
+## Insertting of LLM for explainability 
+    groq_client=Groq(api_key=os.getenv("GROQ_API_KEY"))
+    llm_prompt=f"""
+    You are an expert industrial safety analyst. 
+    Based on the following machine data and model outputs,
+    provide insights and recommandations for a safety officer:
+    Sensor Readings:
+    - Temperature: {'temperature'}
+    - Humidity: {'humidity'}
+    - Noise Level: {'noise_level'}
+    - Gas Level: {'gas_level'}
+    - Vibration: {'vibration'}
+    - Voltage: {'voltage'}
+    - Pressure: {'pressure'}
+    - CO PPM: {'co_ppm'}
+    - Smoke Level: {'smoke_level'}
+    Human Working Parameters:
+    - Hours Worked: {'hours_worked'}
+    - Days Consecutive: {'days_consecutive'}
+    - PPE Compliance: {'ppe_compliance'}
+    - Break Compliance: {'break_compliance'}
+    Model Outputs:
+    - status : {machines['status'].iloc[0]}
+    - MCDM Score: {machines['final_score'].iloc[0]}
+    - Anomaly : {machines['anomaly_binary'].iloc[0]}
+    - Incident Probability: {round(float(machines['incident_proba'].iloc[0]), 2)}
+    - Severity: {machines['severity'].iloc[0]}
+    - Incident Type: {machines['incident_type'].iloc[0]}
+    - Key Contributing Factors: {shap_explanation}
+    - Reason for Risk Level: {machines['reason'].iloc[0]}
+    - Action To Be taken : {machines['action'].iloc[0]}
+    - Timeframe for Action: {machines['timeframe'].iloc[0]}
+    Respond in 3 sentences or less. Be direct and actionable.No bullet points.
+    """
+    chat=groq_client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[{"role":"system","content":"You are an expert industrial safety analyst."},
+                  {"role":"user","content":llm_prompt}],
+        max_tokens=500
+    )
+    llm_explanation=chat.choices[0].message.content
+
     log_prediction(
         # __inputs__
         temperature=input_dict['temperature'],
@@ -204,7 +265,9 @@ def predict(data:HealthAndSafety):
         "reason":str(machines['reason'].iloc[0]),
         "action":str(machines['action'].iloc[0]),
         "timeframe":str(machines['timeframe'].iloc[0]),
-        "shap_explanation":shap_explanation
+        "shap_explanation":shap_explanation,
+        "shap_sensor_explanation":shap_sensor_explanation,
+        "llm_explanation": llm_explanation
     }
     
 

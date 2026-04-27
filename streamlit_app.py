@@ -81,7 +81,6 @@ if mode=="Manual input":
             response=requests.post(url,json=data)
             if response.status_code==200:
                 result=response.json()
-                st.write("Result:",result)
                 if isinstance(result,list):
                     result=result[0]
                 def to_float(val):
@@ -133,20 +132,32 @@ if mode=="Manual input":
                 st.subheader("Recommended Actions")
                 st.warning(result.get("action").capitalize())
                 st.subheader("Timeframe for Action")
-                st.info(result.get("timeframe").capitalize())
-                st.subheader("Latest Decision Engine Output")
+                st.metric("Timeframe:", result.get("timeframe").capitalize())
+                st.divider()
+                llm_exp=result.get("llm_explanation","")
+                if llm_exp:
+                        st.subheader("LLM Explanation")
+                        st.info(llm_exp)
+                else:
+                    st.warning("No LLM explanation provided.")
+                st.divider()
+                st.subheader("SHAP EXPLANATION AND VISUALIZATION")
                 shap_data=result.get("shap_explanation",{})
-                st.write("SHAP DEBUG:",shap_data)
                 if shap_data:
-                    st.subheader("SHAP Feature Importance")
+                    st.subheader("SHAP Model Importance")
                     shap_df=pd.DataFrame(
                         list(shap_data.items()),
                         columns=["Feature", "Impact"]
                     ).sort_values("Impact",ascending=True)
                     st.bar_chart(shap_df.set_index("Feature"))
-
-
-                
+                shap_sensor_data=result.get("shap_sensor_explanation",{})
+                if shap_sensor_data:
+                    st.subheader("SHAP Sensor Impact on Anomaly Presence")
+                    sensor_df=pd.DataFrame({
+                        "Sensor": list(shap_sensor_data.keys()),
+                        "Impact": list(abs(v) for v in shap_sensor_data.values())
+                    }).sort_values("Impact",ascending=True)
+                    st.bar_chart(sensor_df.set_index("Sensor")['Impact'])
         except Exception as e:
             st.error(f"Error during prediction: {e}")
         
@@ -170,7 +181,16 @@ elif mode=="Real-time Monitoring":
                     ssl={"ssl": {"mode": os.getenv("SSL_MODE")}}
             )
             cursor=connection.cursor()
-            cursor.execute("SELECT * FROM healthandsafety ORDER BY id DESC LIMIT 100")
+            cursor.execute("""
+                            SELECT A.*,B.llm_explanation,B.timestamp as llm_timestamp,C.temperature_impact,C.humidity_impact,
+                            C.noise_level_impact,C.gas_level_impact,C.vibration_impact,
+                            C.voltage_impact,C.pressure_impact,C.co_ppm_impact,C.smoke_level_impact 
+                            FROM healthandsafety as A 
+                            LEFT JOIN llm_explanations as B ON A.id=B.healthandsafety_id
+                            LEFT JOIN anomaly_shap_explanations as C ON A.id=C.healthandsafety_id
+                            ORDER BY B.timestamp 
+                            DESC LIMIT 1
+                    """)
             row=cursor.fetchall()
             columns=[col[0] for col in cursor.description]
             df=pd.DataFrame(row, columns=columns)
@@ -202,11 +222,34 @@ elif mode=="Real-time Monitoring":
                             "Impact": list(shap_data.values())
                         }).sort_values("Impact",ascending=True)
                         st.bar_chart(shap_df.set_index("Feature")["Impact"])
+                    shap_sensor={
+                        "temperature_impact": abs(latest.get("temperature_impact")),
+                        "humidity_impact": abs(latest.get("humidity_impact")),
+                        "noise_level_impact": abs(latest.get("noise_level_impact")),
+                        "gas_level_impact": abs(latest.get("gas_level_impact")),
+                        "vibration_impact": abs(latest.get("vibration_impact")),
+                        "voltage_impact": abs(latest.get("voltage_impact")),
+                        "pressure_impact": abs(latest.get("pressure_impact")),
+                        "co_ppm_impact": abs(latest.get("co_ppm_impact")),
+                        "smoke_level_impact": abs(latest.get("smoke_level_impact")),
+                    }
+                    if any(shap_sensor.values()):
+                        st.subheader("Sensor Anomaly Drivers")
+                        sensor_df=pd.DataFrame({
+                            "Sensor": list(shap_sensor.keys()),
+                            "Impact": list(shap_sensor.values())
+                        }).sort_values("Impact",ascending=False)
+                        st.bar_chart(sensor_df.set_index("Sensor")["Impact"])
                     st.subheader("Latest Safety Assessment")
                     st.write(f"**Current Status:** {latest.get('status')}")
                     st.write(f"**Recommended action to Take:** {latest.get('action')}")
                     st.write(f"**Latest Reason:** {latest.get('reason')}")
                     st.write(f"**Window For Action:** {latest.get('timeframe')}")
+                    llm_exp=latest.get("llm_explanation","")
+                    if llm_exp:
+                        st.subheader("LLM Explanation")
+                        st.info(llm_exp)
+                    st.markdown(f"### Last Updated: {latest.get('llm_timestamp')}")
         except Exception as e:
                 st.error(f"Data base error: {e}")
         time.sleep(10)
