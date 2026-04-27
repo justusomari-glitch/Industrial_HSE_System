@@ -1,45 +1,23 @@
 import os
 from src.schema import HealthAndSafety
 from fastapi import FastAPI
-import joblib
 import pandas as pd
 import numpy as np
 from src.logger import log_prediction,setup_mlflow
 import dagshub
-import shap
-from groq import Groq
+from src.models import load_models,anomaly_model,incident_model,incident_severity,incident_type_model
+from src.mcdm_scoring import compute_mcdm_score,rule_engine,action_mapping
+from src.explainability import get_shap_explanation,get_shap_sensor_explanation
+from src.llm import get_llm_explanations
+from src import models as model_store
+
 
 app=FastAPI()
 @app.on_event('startup')
 def startup_event():
     setup_mlflow()
 
-## load models
-models_loaded = False
-def load_models():
-    global anomaly_model,incident_model,incident_severity,incident_type_model,models_loaded
-    if models_loaded:
-        return
-    anomaly_model=joblib.load("models/anomaly_detection.pkl")
-    incident_model=joblib.load("models/incident_model.pkl")
-    incident_severity=joblib.load("models/incident_severity_model.pkl")
-    incident_type_model=joblib.load("models/incident_type_model.pkl")
-    models_loaded = True
 
-type_weights={
-    "Chemical":0.8,
-    "Electrical":0.75,
-    "Fire":1.0,
-    "Mechanical":0.6,
-    "None":0.1
-}
-
-severity_weights={
-    "Medium":0.8,
-    "High":1.0,
-    "Low":0.4,
-    "None":0.1
-}
 
 @app.get("/")
 def home():
@@ -48,126 +26,49 @@ def home():
 @app.post("/predict")
 def predict(data:HealthAndSafety):
     load_models()
+## reload the globals after loading the models
+    anomaly_model=model_store.anomaly_model
+    incident_model=model_store.incident_model
+    incident_severity=model_store.incident_severity
+    incident_type_model=model_store.incident_type_model
+
+
     input_dict=data.model_dump()
     df=pd.DataFrame([input_dict])
+
+    ## make predictions
     anomaly_flag=anomaly_model.predict(df)
     incident_proba=incident_model.predict_proba(df)[:,1]
     severity=incident_severity.predict(df)
     incident_type=incident_type_model.predict(df)
 
-    ## adding the mcmd to join the four models
+    ## compute MCDM score
     anomaly_binary=np.where(anomaly_flag==-1,1,0)
+    scores=compute_mcdm_score(anomaly_flag,incident_proba,severity,incident_type)
+
+
+    ## shap explainability for MCDM
+    weights=([0.1,0.5,0.3,0.1])
+    severity_weights={
+    "Medium":0.8,
+    "High":1.0,
+    "Low":0.4,
+    "None":0.1
+    }
+    type_weights={
+    "Chemical":0.8,
+    "Electrical":0.75,
+    "Fire":1.0,
+    "Mechanical":0.6,
+    "None":0.1
+    }
     severity_score=np.array([severity_weights[m] for m in severity])
     type_score=np.array([type_weights[y] for y in incident_type])
     criteria=np.column_stack([anomaly_binary,incident_proba,severity_score,type_score])
-    weights=([0.1,0.5,0.3,0.1])
-    scores=np.dot(criteria,weights)[0]
+    shap_explanation=get_shap_explanation(criteria,weights)
+    shap_sensor_explanation=get_shap_sensor_explanation(anomaly_model,df)
 
-    ## shap explainabilty for the model outputs
-    feature_names=["anomaly_binary","incident_proba","severity_score","type_score"]
-    background=np.zeros((1,4))
-    explainer=shap.KernelExplainer(lambda x: np.dot(x,weights),background)
-    shap_values=explainer.shap_values(criteria)
-    if isinstance(shap_values, list):
-        shap_values=shap_values[0]
-    else:
-        shap_values=shap_values
-    shap_explanation={
-        feature_names[i]: round(float(shap_values[0][i]), 2) 
-        for i in range(len(feature_names))
-    }
-    ## shap explainability for input features
-    input_feature_names=["temperature","humidity","noise_level","gas_level","vibration",
-                          "voltage","pressure","co_ppm","smoke_level","hours_worked",
-                         "days_consecutive","ppe_compliance","break_compliance"]
-    input_array=df[input_feature_names].values
-    explainer_input=shap.TreeExplainer(anomaly_model.named_steps['iso'])
-    shap_values_input=explainer_input.shap_values(input_array)
-    if isinstance(shap_values_input, list):
-        shap_values_input=shap_values_input[0]
-    else:
-        shap_values_input=shap_values_input
-    shap_sensor_explanation={
-        input_feature_names[i]: round(float(shap_values_input[0][i]), 2) 
-        for i in range(len(input_feature_names))
-    }
-    
-
-    ## creating our decision engine
-    ## step one is that the score engine returns a number not text
-    # define the risk levels
-    RISK_LEVELS = {
-        "LOW RISK!!": 1,
-        "MODERATE RISK!!": 2,
-        "HIGH RISK!!": 3,
-        "CRITICAL RISK!!": 4
-    }
-    
-    ## rule engine (This is split into 2)
-    def apply_soft_rules(scores,row):
-        if row['anomaly_binary'] == 1:
-            scores +=0.05
-        if row['severity'] == "High":
-            scores +=0.05
-        return min(scores,1.0)
-    def check_hard_rules(row):
-        if row['incident_proba']>0.8 and row['severity'] == "High":
-            return "CRITICAL RISK!!","Critical probability and Severity."
-        if row['anomaly_binary']== 1 and row['incident_proba']>0.7:
-            return "HIGH RISK!!", "Anomaly Detected with High Incident Probability."
-        return None,None
-    
-    def score_engine(row):
-        return row['scores']
-    
-    ## decision engine
-    def rule_engine(row):
-        scores =score_engine(row)
-
-        # apply the soft rules
-        scores=apply_soft_rules(scores,row)
-
-        # classify rules
-        if scores >0.7:
-            status = "CRITICAL RISK!!"
-            default_reason="Critical risk identified based on combined factors."
-        elif scores >0.5:
-            status = "HIGH RISK!!"
-            default_reason="High risk identified based on combined factors."
-        elif scores >0.3:
-            status = "MODERATE RISK!!"
-            default_reason="Moderate risk identified based on combined factors."
-        else:
-            status = "LOW RISK!!"
-            default_reason="Low risk identified based on combined factors."
-        overide_status,reason=check_hard_rules(row)
-        if overide_status:
-            if RISK_LEVELS[overide_status]>RISK_LEVELS[status]:
-                status=overide_status
-                final_reason=reason
-            else:
-                final_reason=default_reason
-        else:
-            final_reason=default_reason
-        return {
-            "score":round(scores,2),
-            "status":status,
-            "reason":final_reason
-        }
-    # action mapping based on score
-    def action_mapping(status):
-        mapping={
-            "CRITICAL RISK!!": ("Immediate Evacuation and Emergency Response Required.",
-                                  "<24 hours"),
-            "HIGH RISK!!": ("Urgent Intervention Needed. Address Issues within 24-48 hours.", 
-                            "24-48 hours"),
-            "MODERATE RISK!!": ("Monitor Closely and Implement Preventive Measures.",
-                                 "48-72 hours"),
-            "LOW RISK!!": ("Continue Regular Operations with Standard Safety Protocols.",
-                            "No immediate action needed")
-        }
-        return mapping.get(status, ("UNKNOWN STATUS - INVESTIGATE IMMEDIATELY.",
-                                    "IMMEDIATE"))
+    # build machines dataframe
     machines=pd.DataFrame({
         "anomaly_binary":anomaly_binary,
         "incident_proba":incident_proba,
@@ -183,50 +84,7 @@ def predict(data:HealthAndSafety):
     machines['final_score']=machines['decision'].apply(lambda x: x['score'])
     machines[['action', 'timeframe']]=machines['status'].apply(lambda x: pd.Series(action_mapping(x)))
 
-## Insertting of LLM for explainability 
-    api_key=os.getenv("GROQ_API_KEY")
-    if not api_key:
-        raise ValueError("GROQ_API_KEY environment variable not set.")
-    groq_client=Groq(api_key=api_key)
-    llm_prompt=f"""
-    You are an expert industrial safety analyst. 
-    Based on the following machine data and model outputs,
-    provide insights and recommandations for a safety officer:
-    Sensor Readings:
-    - Temperature: {'temperature'}
-    - Humidity: {'humidity'}
-    - Noise Level: {'noise_level'}
-    - Gas Level: {'gas_level'}
-    - Vibration: {'vibration'}
-    - Voltage: {'voltage'}
-    - Pressure: {'pressure'}
-    - CO PPM: {'co_ppm'}
-    - Smoke Level: {'smoke_level'}
-    Human Working Parameters:
-    - Hours Worked: {'hours_worked'}
-    - Days Consecutive: {'days_consecutive'}
-    - PPE Compliance: {'ppe_compliance'}
-    - Break Compliance: {'break_compliance'}
-    Model Outputs:
-    - status : {machines['status'].iloc[0]}
-    - MCDM Score: {machines['final_score'].iloc[0]}
-    - Anomaly : {machines['anomaly_binary'].iloc[0]}
-    - Incident Probability: {round(float(machines['incident_proba'].iloc[0]), 2)}
-    - Severity: {machines['severity'].iloc[0]}
-    - Incident Type: {machines['incident_type'].iloc[0]}
-    - Key Contributing Factors: {shap_explanation}
-    - Reason for Risk Level: {machines['reason'].iloc[0]}
-    - Action To Be taken : {machines['action'].iloc[0]}
-    - Timeframe for Action: {machines['timeframe'].iloc[0]}
-    Respond in 3 sentences or less. Be direct and actionable.No bullet points.
-    """
-    chat=groq_client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=[{"role":"system","content":"You are an expert industrial safety analyst."},
-                  {"role":"user","content":llm_prompt}],
-        max_tokens=500
-    )
-    llm_explanation=chat.choices[0].message.content
+    llm_explanation=get_llm_explanations(input_dict,machines)
 
     log_prediction(
         # __inputs__
