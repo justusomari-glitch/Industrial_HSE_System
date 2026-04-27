@@ -79,87 +79,89 @@ if mode=="Manual input":
         url=st.secrets["API_URL"]
         try:
             response=requests.post(url,json=data)
-            if response.status_code==200:
-                result=response.json()
-                if isinstance(result,list):
+            st.write("API Response Status Code:", response.status_code)
+            st.write("API Response Content:", response.text)
+            result=response.json()
+            st.write(result)
+            if isinstance(result,list):
                     result=result[0]
-                def to_float(val):
+            def to_float(val):
                     try:
                         return float(val)
                     except (ValueError, TypeError):
                         return 0.0
-                incident_prob=to_float(result.get("incident_proba"))
-                score=to_float(result.get("scores", 0.0))
-                status=result.get("status","")
-                severity=result.get("severity","")
-                st.divider()
+            incident_prob=to_float(result.get("incident_proba"))
+            score=to_float(result.get("scores", 0.0))
+            status=result.get("status","")
+            severity=result.get("severity","")
+            st.divider()
 
-                st.write("**Anomaly Status:**",result.get("anomaly_binary"))
+            st.write("**Anomaly Status:**",result.get("anomaly_binary"))
 
-                st.write("**Severity:**",result.get("severity"))
-                st.write("**Type of Incident:**",result.get("incident_type"))
+            st.write("**Severity:**",result.get("severity"))
+            st.write("**Type of Incident:**",result.get("incident_type"))
 
-                st.divider()
-                if result.get("anomaly_binary")=="ANOMALY DETECTED":
-                    st.error("Anomaly Detected! Please check machine immediately.")
-                else:
-                    st.success("No Anomaly Detected. Machine is stable.")
-                history= np.clip(np.random.normal(score, scale=0.1, size=20), 0, 1)
-                df=pd.DataFrame({
+            st.divider()
+            if result.get("anomaly_binary")=="ANOMALY DETECTED":
+                st.error("Anomaly Detected! Please check machine immediately.")
+            else:
+                st.success("No Anomaly Detected. Machine is stable.")
+            history= np.clip(np.random.normal(score, scale=0.1, size=20), 0, 1)
+            df=pd.DataFrame({
                     "timestamp":pd.date_range(start="2024-01-01", periods=20, freq="H"),
                     "risk_score":history
                 })
 
-                st.divider()
+            st.divider()
 
-                col2,col4=st.columns(2)
+            col2,col4=st.columns(2)
             
-                col2.metric("Incident Probability", f"{incident_prob:.2f}")
-                col4.metric("System Risk Score", f"{score:.2f}")
+            col2.metric("Incident Probability", f"{incident_prob:.2f}")
+            col4.metric("System Risk Score", f"{score:.2f}")
 
-                st.divider()
+            st.divider()
 
-                st.subheader("Decision Engine Output")
-                status=result.get("status","").title()
-                risk_text=(result.get("reason") or "No specific reason provided.").capitalize()
+            st.subheader("Decision Engine Output")
+            status=result.get("status","").title()
+            risk_text=(result.get("reason") or "No specific reason provided.").capitalize()
                 
 
-                st.subheader("Safety Assesment")
+            st.subheader("Safety Assesment")
 
-                st.markdown(f"**Overal Status:** {status}")
-                st.markdown(f"**Risk Insight:** {risk_text}")
+            st.markdown(f"**Overal Status:** {status}")
+            st.markdown(f"**Risk Insight:** {risk_text}")
                  
-                st.subheader("Recommended Actions")
-                st.warning(result.get("action").capitalize())
-                st.subheader("Timeframe for Action")
-                st.metric("Timeframe:", result.get("timeframe").capitalize())
-                st.divider()
-                llm_exp=result.get("llm_explanation","")
-                if llm_exp:
-                        st.subheader("LLM Explanation")
-                        st.info(llm_exp)
-                else:
-                    st.warning("No LLM explanation provided.")
-                st.divider()
-                st.subheader("SHAP EXPLANATION AND VISUALIZATION")
-                shap_data=result.get("shap_explanation",{})
-                if shap_data:
-                    st.subheader("SHAP Model Importance")
-                    shap_df=pd.DataFrame(
-                        list(shap_data.items()),
-                        columns=["Feature", "Impact"]
-                    ).sort_values("Impact",ascending=True)
-                    st.bar_chart(shap_df.set_index("Feature"))
-                shap_sensor_data=result.get("shap_sensor_explanation",{})
-                if shap_sensor_data:
-                    st.subheader("SHAP Sensor Impact on Anomaly Presence")
-                    sensor_df=pd.DataFrame({
-                        "Sensor": list(shap_sensor_data.keys()),
-                        "Impact": list(abs(v) for v in shap_sensor_data.values())
-                    }).sort_values("Impact",ascending=True)
-                    st.bar_chart(sensor_df.set_index("Sensor")['Impact'])
+            st.subheader("Recommended Actions")
+            st.warning(result.get("action").capitalize())
+            st.subheader("Timeframe for Action")
+            st.metric("Timeframe:", result.get("timeframe").capitalize())
+            st.divider()
+            llm_exp=result.get("llm_explanation","")
+            if llm_exp:
+                st.subheader("LLM Explanation")
+                st.info(llm_exp)
+            else:
+                st.warning("No LLM explanation provided.")
+            st.divider()
+            st.subheader("SHAP EXPLANATION AND VISUALIZATION")
+            shap_data=result.get("shap_explanation",{})
+            if shap_data:
+                st.subheader("SHAP Model Importance")
+                shap_df=pd.DataFrame(
+                list(shap_data.items()),
+                columns=["Feature", "Impact"]
+            ).sort_values("Impact",ascending=True)
+            st.bar_chart(shap_df.set_index("Feature"))
+            shap_sensor_data=result.get("shap_sensor_explanation",{})
+            if shap_sensor_data:
+                st.subheader("SHAP Sensor Impact on Anomaly Presence")
+                sensor_df=pd.DataFrame({
+                    "Sensor": list(shap_sensor_data.keys()),
+                    "Impact": list(abs(v) for v in shap_sensor_data.values())
+                }).sort_values("Impact",ascending=True)
+                st.bar_chart(sensor_df.set_index("Sensor")['Impact'])
         except Exception as e:
-            st.error(f"Error during prediction: {e}")
+                st.error(f"Error during prediction: {e}")
         
 
 elif mode=="Real-time Monitoring":
