@@ -206,15 +206,15 @@ elif mode=="Real-time Monitoring":
                         }).sort_values("Impact",ascending=True)
                         st.bar_chart(shap_df.set_index("Feature")["Impact"])
                     shap_sensor={
-                        "temperature_impact": abs(latest.get("temperature_impact"),0.0),
-                        "humidity_impact": abs(latest.get("humidity_impact"),0.0),
-                        "noise_level_impact": abs(latest.get("noise_level_impact"),0.0),
-                        "gas_level_impact": abs(latest.get("gas_level_impact"),0.0),
-                        "vibration_impact": abs(latest.get("vibration_impact"),0.0),
-                        "voltage_impact": abs(latest.get("voltage_impact"),0.0),
-                        "pressure_impact": abs(latest.get("pressure_impact"),0.0),
-                        "co_ppm_impact": abs(latest.get("co_ppm_impact"),0.0),
-                        "smoke_level_impact": abs(latest.get("smoke_level_impact"),0.0),
+                        "temperature_impact": abs(latest.get("temperature_impact") or 0.0),
+                        "humidity_impact": abs(latest.get("humidity_impact") or 0.0),
+                        "noise_level_impact": abs(latest.get("noise_level_impact") or 0.0),
+                        "gas_level_impact": abs(latest.get("gas_level_impact") or 0.0),
+                        "vibration_impact": abs(latest.get("vibration_impact") or 0.0),
+                        "voltage_impact": abs(latest.get("voltage_impact") or 0.0),
+                        "pressure_impact": abs(latest.get("pressure_impact") or 0.0),
+                        "co_ppm_impact": abs(latest.get("co_ppm_impact") or 0.0),
+                        "smoke_level_impact": abs(latest.get("smoke_level_impact") or 0.0),
                     }
                     if any(shap_sensor.values()):
                         st.subheader("Sensor Anomaly Drivers")
