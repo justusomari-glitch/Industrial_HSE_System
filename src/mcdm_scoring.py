@@ -51,6 +51,7 @@ def rule_engine(row):
     scores =score_engine(row)
         # apply the soft rules
     scores=apply_soft_rules(scores,row)
+    overide_status,reason=check_hard_rules(row)
         # classify rules
     if scores >0.7:
         status = "CRITICAL RISK!!"
@@ -64,7 +65,7 @@ def rule_engine(row):
     else:
         status = "LOW RISK!!"
         default_reason="Low risk identified based on combined factors."
-        overide_status,reason=check_hard_rules(row)
+        
     if overide_status:
         if RISK_LEVELS[overide_status]>RISK_LEVELS[status]:
             status=overide_status
