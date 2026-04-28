@@ -36,6 +36,7 @@ def get_llm_explanations(input_dict,machines):
     - Reason for Risk Level: {machines['reason'].iloc[0]}
     - Action To Be taken : {machines['action'].iloc[0]}
     - Timeframe for Action: {machines['timeframe'].iloc[0]}
+    - Sensor influence on anomaly: {{shap_sensor_explanation}}
     Respond in 3 sentences or less. Be direct and actionable.No bullet points.
     """
     chat=groq_client.chat.completions.create(
